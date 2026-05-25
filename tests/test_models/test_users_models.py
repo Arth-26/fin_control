@@ -1,18 +1,20 @@
 from datetime import datetime
 
+import pytest
 from sqlalchemy import select
 
 from fin_control.models import User
 
 
-def test_create_user(session, mock_db_time):
+@pytest.mark.asyncio
+async def test_table_user_create_object(session, mock_db_time):
     with mock_db_time(User):
         new_user = User(username='teste', email='teste@example.com', password='secret')
 
         session.add(new_user)
-        session.commit()
+        await session.commit()
 
-        first_user = session.scalar(select(User).where(User.username == 'teste'))
+        first_user = await session.scalar(select(User).where(User.username == 'teste'))
 
     assert first_user.username == 'teste'
     assert first_user.email == 'teste@example.com'
