@@ -63,17 +63,10 @@ async def populate_users(session: AsyncSession):
     password = '123456'
     users = []
     for i in range(1, 10 + 1):
-        user = {
-            'username': f'teste{i}',
-            'email': f'teste{i}@example.com', 
-            'password': get_password_hash(password)
-        }
+        user = {'username': f'teste{i}', 'email': f'teste{i}@example.com', 'password': get_password_hash(password)}
         users.append(user)
 
-    await session.execute(
-        insert(User),
-        users
-    )
+    await session.execute(insert(User), users)
     await session.commit()
 
 

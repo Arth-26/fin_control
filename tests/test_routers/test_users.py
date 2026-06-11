@@ -1,7 +1,6 @@
 """TEST CRUD"""
 
 from http import HTTPStatus
-import pytest
 
 from fin_control.schemas.user_schemas import UserPublic
 
@@ -32,10 +31,10 @@ def test_read_users_return_user_list(client, user, token):
     assert response.json() == {'users': [user_public]}
 
 
-def test_get_user_return_user_object(client, user):
+def test_get_user_return_user_object(client, user, token):
     user_public = UserPublic.model_validate(user).model_dump()
 
-    response = client.get('/users/1')
+    response = client.get('/users/1', headers={'Authorization': f'Bearer {token}'})
 
     assert response.status_code == HTTPStatus.OK
     assert response.json() == user_public
@@ -119,6 +118,13 @@ def test_read_users_user_not_found(client):
     assert response.json().get('detail') == 'Could not validate credentials'
 
 
+def test_get_user_unauthorized_action(client, user, token, populate_users):
+    response = client.get('/users/2', headers={'Authorization': f'Bearer {token}'})
+
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+    assert response.json().get('detail') == 'Not Enough Permissions'
+
+
 """ TEST CONCLIFT ERROR AND NOT FOUND ERROR"""
 
 
@@ -154,8 +160,8 @@ def test_create_user_email_already_exists(client, user):
     }
 
 
-def test_get_user_raise_user_not_found(client):
-    response = client.get('/users/0')
+def test_get_user_raise_user_not_found(client, user, token, populate_users):
+    response = client.get('/users/0', headers={'Authorization': f'Bearer {token}'})
 
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.json() == {'detail': 'User not found'}

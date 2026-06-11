@@ -25,11 +25,7 @@ class ApiUser(HttpUser):
     def on_start(self):
 
         usuario = random.choice(usuarios)
-        print(usuario['username'])
-        print(usuario['password'])
         response = self.client.post('/auth/login', data={'username': usuario['username'], 'password': usuario['password']})
-
-        print(response.status_code)
         data = response.json()
 
         token = data['access_token']

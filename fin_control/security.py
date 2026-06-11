@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
-from jwt import DecodeError, decode, encode
+from jwt import DecodeError, ExpiredSignatureError, InvalidTokenError, decode, encode
 from pwdlib import PasswordHash
 from sqlalchemy import Select
 from sqlalchemy.orm import Session
@@ -29,11 +29,21 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def create_access_token(data: dict):
+def decode_token(token: str):
+    try:
+        payload = decode(token, SECRET_KEY, algorithms=ALGORITHM)
+
+        return payload
+    except InvalidTokenError:
+        raise InvalidTokenError()
+
+
+def create_access_token(data: dict, expire_time=ACCESS_TOKEN_EXPIRE_MINUTES, type: str = 'access'):
     to_encode = data.copy()
 
-    expire = datetime.now(tz=ZoneInfo('UTC')) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(tz=ZoneInfo('UTC')) + timedelta(minutes=expire_time)
     to_encode['exp'] = expire
+    to_encode['type'] = type
 
     encode_jwt = encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -45,9 +55,8 @@ async def get_request_user(session: Session = Depends(get_session), token: str =
         status_code=HTTPStatus.UNAUTHORIZED, detail='Could not validate credentials', headers={'WWW-Authenticate': 'Bearer'}
     )
     try:
-        payload = decode(token, SECRET_KEY, algorithms=ALGORITHM)
+        payload = decode_token(token)
         subject_email = payload.get('sub')
-
         if not subject_email:
             raise credentials_error
 
@@ -57,5 +66,8 @@ async def get_request_user(session: Session = Depends(get_session), token: str =
             raise credentials_error
 
         return user
+
     except DecodeError:
+        raise credentials_error
+    except InvalidTokenError:
         raise credentials_error

@@ -5,6 +5,11 @@ from pydantic import BaseModel, Field
 class Token(BaseModel):
     token_type: str
     access_token: str
+    refresh_token: str
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
 
 
 class FilterPage(BaseModel):

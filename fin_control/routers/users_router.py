@@ -20,10 +20,13 @@ async def read_users(session: T_Session, request_user: Request_User, pagination:
 
 
 @router.get('/{user_id}', status_code=HTTPStatus.OK, response_model=UserPublic)
-async def get_user(user_id: int, session: T_Session):
+async def get_user(user_id: int, session: T_Session, request_user: Request_User):
     user = await session.scalar(Select(User).where(User.id == user_id))
     if not user:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail='User not found')
+
+    if user_id != request_user.id:
+        raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail='Not Enough Permissions')
 
     return user
 

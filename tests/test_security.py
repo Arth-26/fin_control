@@ -1,7 +1,7 @@
 import pytest
 from jwt import decode
 
-from fin_control.security import create_access_token, get_request_user
+from fin_control.security import create_access_token, decode_token, get_request_user
 
 
 def test_create_jwt(settings):
@@ -12,6 +12,16 @@ def test_create_jwt(settings):
 
     assert decoded['test'] == data['test']
     assert 'exp' in decoded
+
+
+def test_decode_token(user, token):
+    decode = decode_token(token)
+
+    assert 'sub' in decode
+    assert 'exp' in decode
+    assert 'type' in decode
+    assert decode.get('sub') == user.email
+    assert decode.get('type') == 'access'
 
 
 @pytest.mark.asyncio
