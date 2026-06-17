@@ -28,4 +28,4 @@ def test_decode_token(user, token):
 async def test_get_request_user_return_user(session, user, token):
     request_user = await get_request_user(session, token)
 
-    assert user == request_user
+    assert user.id == request_user.id

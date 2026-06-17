@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
-from jwt import ExpiredSignatureError, InvalidTokenError
+from jwt import InvalidTokenError
 from sqlalchemy import Select
 
 from fin_control.depends import T_Session
@@ -38,7 +38,7 @@ async def login(form_data: LoginForm, session: T_Session):
 @router.post('/refresh', response_model=Token)
 async def refresh_access_token(
     data: RefreshTokenRequest,
-):  
+):
     try:
         payload = decode_token(data.refresh_token)
 
@@ -51,6 +51,4 @@ async def refresh_access_token(
 
         return {'token_type': 'Bearer', 'access_token': new_access_token, 'refresh_token': data.refresh_token}
     except InvalidTokenError:
-        raise HTTPException(
-            status_code=HTTPStatus.UNAUTHORIZED, detail='Expired refresh token', headers={'WWW-Authenticate': 'Bearer'}
-        )
+        raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail='Expired refresh token', headers={'WWW-Authenticate': 'Bearer'})

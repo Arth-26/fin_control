@@ -6,7 +6,7 @@ from freezegun import freeze_time
 
 
 def test_login(client, user):
-    form_data = {'username': 'teste@example.com', 'password': '123456'}
+    form_data = {'username': user.email, 'password': '123456'}
 
     response = client.post('/auth/login', data=form_data)
 
@@ -17,14 +17,12 @@ def test_login(client, user):
     assert response.json()['token_type'] == 'Bearer'
 
 
-def test_refresh_token(client, token):
-    form_data = {'username': 'teste@example.com', 'password': '123456'}
+def test_refresh_token(client, user, token):
+    form_data = {'username': user.email, 'password': '123456'}
 
     response = client.post('/auth/login', data=form_data)
 
-    body = {
-        "refresh_token": response.json().get('refresh_token')
-    }
+    body = {'refresh_token': response.json().get('refresh_token')}
     response = client.post('/auth/refresh', json=body)
 
     assert response.status_code == HTTPStatus.OK
@@ -70,8 +68,6 @@ def test_raise_request_unauthorized_expire_token(client, user):
         assert response.json() == {'detail': 'Could not validate credentials'}
 
 
-
-
 def test_raise_request_unauthorized_expire_refresh_token(client, user):
     with freeze_time('2026-06-10 16:00:00'):
         response = client.post(
@@ -82,12 +78,12 @@ def test_raise_request_unauthorized_expire_refresh_token(client, user):
         refresh_token = response.json()['refresh_token']
 
     with freeze_time('2026-06-18 16:00:00'):
-        response = client.post('/auth/refresh', json={"refresh_token": refresh_token})
+        response = client.post('/auth/refresh', json={'refresh_token': refresh_token})
         assert response.status_code == HTTPStatus.UNAUTHORIZED
         assert response.json() == {'detail': 'Expired refresh token'}
 
 
 def test_raise_request_unauthorize_type_token_not_refresh(client, token):
-    response = client.post('/auth/refresh', json={"refresh_token": token})
+    response = client.post('/auth/refresh', json={'refresh_token': token})
     assert response.status_code == HTTPStatus.UNAUTHORIZED
     assert response.json() == {'detail': 'Invalid refresh token'}

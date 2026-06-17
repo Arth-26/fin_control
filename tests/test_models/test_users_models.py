@@ -9,7 +9,7 @@ from fin_control.models import User
 @pytest.mark.asyncio
 async def test_table_user_create_object(session, mock_db_time):
     with mock_db_time(User):
-        new_user = User(username='teste', email='teste@example.com', password='secret')
+        new_user = User(username='teste', superuser=True, email='teste@example.com', password='secret')
 
         session.add(new_user)
         await session.commit()

@@ -23,78 +23,76 @@ def test_create_user_return_user_objects(client):
     }
 
 
-def test_read_users_return_user_list(client, user, token):
-    user_public = UserPublic.model_validate(user).model_dump()
-    response = client.get('/users/', headers={'Authorization': f'Bearer {token}'})
+def test_read_users_return_user_list(client, superuser, supertoken):
+    user_public = UserPublic.model_validate(superuser).model_dump()
+    response = client.get('/users/', headers={'Authorization': f'Bearer {supertoken}'})
 
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {'users': [user_public]}
 
 
-def test_get_user_return_user_object(client, user, token):
-    user_public = UserPublic.model_validate(user).model_dump()
+def test_get_user_return_user_object(client, superuser, supertoken):
+    user_public = UserPublic.model_validate(superuser).model_dump()
 
-    response = client.get('/users/1', headers={'Authorization': f'Bearer {token}'})
+    response = client.get('/users/1', headers={'Authorization': f'Bearer {supertoken}'})
 
     assert response.status_code == HTTPStatus.OK
     assert response.json() == user_public
 
 
-def test_patch_user_username_return_user_updated(client, user):
+def test_patch_user_username_return_user_updated(client, superuser, supertoken):
     update_username = {
         'username': 'user_test_update',
     }
 
-    user_id = 1
-    response = client.patch(f'/users/{user_id}', json=update_username)
+    response = client.patch(f'/users/{superuser.id}', json=update_username, headers={'Authorization': f'Bearer {supertoken}'})
 
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {
-        'id': user_id,
+        'id': superuser.id,
         'username': 'user_test_update',
-        'email': user.email,
+        'email': superuser.email,
     }
 
 
-def test_patch_user_email_return_user_updated(client, user):
+def test_patch_user_email_return_user_updated(client, superuser, supertoken):
     update_email = {
         'email': 'teste_update@example.com',
     }
 
-    user_id = 1
-    response = client.patch(f'/users/{user_id}', json=update_email)
+    response = client.patch(f'/users/{superuser.id}', json=update_email, headers={'Authorization': f'Bearer {supertoken}'})
 
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {
-        'id': user_id,
-        'username': user.username,
+        'id': superuser.id,
+        'username': superuser.username,
         'email': 'teste_update@example.com',
     }
 
 
-def test_delete_user_return_success_message(client, user, token, populate_users):
-    get_user_for_delete = client.get('/users/2')
+def test_delete_user_return_success_message(client, supertoken, populate_users):
+    deleted_user = client.get('/users/2', headers={'Authorization': f'Bearer {supertoken}'})
 
-    delete_response = client.delete('/users/2')
+    delete_response = client.delete('/users/2', headers={'Authorization': f'Bearer {supertoken}'})
 
-    get_response = client.get('/users', headers={'Authorization': f'Bearer {token}'})
+    get_response = client.get('/users', headers={'Authorization': f'Bearer {supertoken}'})
 
     assert delete_response.status_code == HTTPStatus.OK
     assert delete_response.json() == {'message': 'Operation successfully'}
-    assert get_user_for_delete not in get_response.json().get('users')
+    assert deleted_user not in get_response.json().get('users')
 
 
-""" TEST PERMISSION ERROR"""
+""" TEST REQUEST USER ERROR"""
 
 
-def test_read_users_token_invalid(client):
+def test_request_user_token_invalid(client):
     response = client.get('/users/', headers={'Authorization': 'Bearer token-invalid'})
 
     assert response.status_code == HTTPStatus.UNAUTHORIZED
     assert response.json().get('detail') == 'Could not validate credentials'
 
 
-def test_read_users_without_sub(client):
+def test_request_user_without_sub(client):
     token = (
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.\\n'
         'eyJzdWIiOiIiLCJuYW1lIjoiSm9obiBEb2UiLCJhZG1pbiI6dHJ1ZSwiaWF0IjoxNTE2MjM5MDIyfQ.\\n'
@@ -106,7 +104,7 @@ def test_read_users_without_sub(client):
     assert response.json().get('detail') == 'Could not validate credentials'
 
 
-def test_read_users_user_not_found(client):
+def test_request_user_user_not_found(client):
     token = (
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.\\n'
         'eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.\\n'
@@ -118,8 +116,36 @@ def test_read_users_user_not_found(client):
     assert response.json().get('detail') == 'Could not validate credentials'
 
 
-def test_get_user_unauthorized_action(client, user, token, populate_users):
+""" TEST PERMISSIONS ERROR"""
+
+
+def test_read_user_not_request_user(client, token):
+    response = client.get('/users/', headers={'Authorization': f'Bearer {token}'})
+
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+    assert response.json().get('detail') == 'Not Enough Permissions'
+
+
+def test_get_user_unauthorized_action(client, token, populate_users):
     response = client.get('/users/2', headers={'Authorization': f'Bearer {token}'})
+
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+    assert response.json().get('detail') == 'Not Enough Permissions'
+
+
+def test_update_user_request_user_not_equal_updated_user(client, token, populate_users):
+    update_email = {
+        'email': 'teste_update@example.com',
+    }
+
+    response = client.patch('/users/2', json=update_email, headers={'Authorization': f'Bearer {token}'})
+
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+    assert response.json().get('detail') == 'Not Enough Permissions'
+
+
+def test_delete_user_request_user_not_superuser(client, token, populate_users):
+    response = client.delete('/users/2', headers={'Authorization': f'Bearer {token}'})
 
     assert response.status_code == HTTPStatus.UNAUTHORIZED
     assert response.json().get('detail') == 'Not Enough Permissions'
@@ -130,7 +156,7 @@ def test_get_user_unauthorized_action(client, user, token, populate_users):
 
 def test_create_user_username_already_exists(client, user):
     body = {
-        'username': 'teste',
+        'username': user.username,
         'email': 'example@gmail.com',
         'password': '123456',
     }
@@ -147,7 +173,7 @@ def test_create_user_username_already_exists(client, user):
 def test_create_user_email_already_exists(client, user):
     body = {
         'username': 'user_test',
-        'email': 'teste@example.com',
+        'email': user.email,
         'password': '123456',
     }
 
@@ -160,66 +186,37 @@ def test_create_user_email_already_exists(client, user):
     }
 
 
-def test_get_user_raise_user_not_found(client, user, token, populate_users):
+def test_get_user_raise_user_not_found(client, token):
     response = client.get('/users/0', headers={'Authorization': f'Bearer {token}'})
 
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.json() == {'detail': 'User not found'}
 
 
-def test_patch_user_username_already_exists(client, user):
-    new_user_json = {
-        'username': 'test2',
-        'email': 'test2@example.com',
-        'password': '123456',
-    }
-
-    client.post('/users', json=new_user_json)
-
+def test_patch_user_username_already_exists(client, user, token, populate_users):
     update_username = {
         'username': 'test2',
     }
 
-    user_id = 1
-    response = client.patch(f'/users/{user_id}', json=update_username)
+    response = client.patch(f'/users/{user.id}', json=update_username, headers={'Authorization': f'Bearer {token}'})
 
     assert response.status_code == HTTPStatus.CONFLICT
     assert response.json() == {'detail': 'Username already exists'}
 
 
-def test_patch_user_email_already_exists(client, user):
-    new_user_json = {
-        'username': 'test2',
-        'email': 'test2@example.com',
-        'password': '123456',
-    }
-
-    client.post('/users', json=new_user_json)
-
+def test_patch_user_email_already_exists(client, user, token, populate_users):
     update_email = {
         'email': 'test2@example.com',
     }
 
-    user_id = 1
-    response = client.patch(f'/users/{user_id}', json=update_email)
+    response = client.patch(f'/users/{user.id}', json=update_email, headers={'Authorization': f'Bearer {token}'})
 
     assert response.status_code == HTTPStatus.CONFLICT
     assert response.json() == {'detail': 'Email already exists'}
 
 
-def test_patch_user_raise_user_not_found(client):
-    body = {
-        'username': 'user_test_update',
-    }
-
-    response = client.patch('/users/0', json=body)
-
-    assert response.status_code == HTTPStatus.NOT_FOUND
-    assert response.json() == {'detail': 'User not found'}
-
-
-def test_delete_user_raise_user_not_found(client):
-    response = client.delete('/users/0')
+def test_delete_user_raise_user_not_found(client, supertoken):
+    response = client.delete('/users/0', headers={'Authorization': f'Bearer {supertoken}'})
 
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.json() == {'detail': 'User not found'}
