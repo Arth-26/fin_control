@@ -5,6 +5,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from fin_control.enums import TransactionType
+from fin_control.schemas.base_schemas import FilterPage
 from fin_control.schemas.user_schemas import UserPublic
 
 
@@ -35,3 +36,8 @@ class TransactionPublicSchema(BaseModel):
 
 class TransactionList(BaseModel):
     transactions: list[TransactionPublicSchema]
+
+
+class FilterTransictions(FilterPage):
+    type: TransactionType | None = None
+    transaction_date: date | None = None

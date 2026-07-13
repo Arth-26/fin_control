@@ -1,3 +1,4 @@
+import os
 from http import HTTPStatus
 from typing import Annotated
 
@@ -15,6 +16,7 @@ from fin_control.settings import Settings
 router = APIRouter(prefix='/auth', tags=['Auth'])
 
 LoginForm = Annotated[OAuth2PasswordRequestForm, Depends()]
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS"))
 
 
 @router.post('/login', response_model=Token)
@@ -29,9 +31,8 @@ async def login(form_data: LoginForm, session: T_Session):
 
     access_token = create_access_token({'sub': user.email})
 
-    expire_refresh_token = (Settings().REFRESH_TOKEN_EXPIRE_DAYS * 24) * 60
+    expire_refresh_token = (REFRESH_TOKEN_EXPIRE_DAYS * 24) * 60
     refresh_token = create_access_token({'sub': user.email}, expire_time=expire_refresh_token, type='refresh')
-
     return {'token_type': 'Bearer', 'access_token': access_token, 'refresh_token': refresh_token}
 
 

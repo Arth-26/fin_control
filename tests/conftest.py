@@ -1,15 +1,16 @@
 from contextlib import contextmanager
 from datetime import datetime
 from decimal import Decimal
-from random import randint
+from random import randint, choice
 
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
-from sqlalchemy import Select, event, insert
+from sqlalchemy import event, insert
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import selectinload
 from sqlalchemy.pool import StaticPool
+
+from testcontainers.postgres import PostgresContainer
 
 from fin_control.app import app
 from fin_control.database import get_session
@@ -31,14 +32,16 @@ def client(session):
     app.dependency_overrides.clear()
 
 
-@pytest_asyncio.fixture
-async def session():
-    engine = create_async_engine(
-        'sqlite+aiosqlite:///:memory:',
-        connect_args={'check_same_thread': False},
-        poolclass=StaticPool,
-    )
+@pytest.fixture(scope='session')
+def engine():
+    with PostgresContainer('postgres:17', driver='psycopg') as postgres:
+        yield create_async_engine(
+            postgres.get_connection_url()
+        )
 
+
+@pytest_asyncio.fixture
+async def session(engine):
     async with engine.begin() as conn:
         await conn.run_sync(table_registry.metadata.create_all)
 
@@ -55,11 +58,12 @@ async def create_user(session, superuser=False):
     user = User(username=f'teste_{random_idx}', superuser=superuser, email=f'teste_{random_idx}@example.com', password=get_password_hash(password))
     session.add(user)
     await session.commit()
-    await session.refresh(user)
 
     user.clean_password = password
 
-    user = await session.scalar(Select(User).options(selectinload(User.transactions)).where(User.id == user.id))
+    await session.refresh(user, attribute_names=['transactions'])
+
+    # user = await session.scalar(Select(User).options(selectinload(User.transactions)).where(User.id == user.id))
 
     return user
 
@@ -87,12 +91,15 @@ async def transaction(session, user):
     )
 
     session.add(new_transaction)
-    await session.commit()
-    transaction = await session.scalars(
-        Select(Transactions).options(selectinload(Transactions.user)).where(Transactions.id == new_transaction.id).limit(1)
-    )
 
-    return transaction.first()
+    await session.commit()
+    await session.refresh(new_transaction, attribute_names=['user'])
+
+    # transaction = await session.scalars(
+    #     Select(Transactions).options(selectinload(Transactions.user)).where(Transactions.id == new_transaction.id).limit(1)
+    # )
+
+    return new_transaction.first()
 
 
 @pytest_asyncio.fixture
@@ -115,7 +122,7 @@ async def transactions_user_factory(user, session: AsyncSession):
             'user_id': user.id,
             'description': f'Teste de criação de movimentação {i}',
             'amount': Decimal(randint(1, 10000000)),
-            'type': 'INCOME',
+            'type': choice(['INCOME', 'EXPENSE']),
             'transaction_date': datetime(2026, randint(1, 12), randint(1, 28)),
         }
         transactions.append(transaction)

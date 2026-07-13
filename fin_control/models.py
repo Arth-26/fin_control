@@ -21,7 +21,9 @@ class User:
     superuser: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(init=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(init=False, server_default=func.now(), onupdate=func.now())
-    transactions: Mapped[List['Transactions']] = relationship(back_populates='user', cascade='all, delete-orphan', default_factory=list, init=False)
+    transactions: Mapped[List['Transactions']] = relationship(
+        back_populates='user', cascade='all, delete-orphan', lazy='selectin', default_factory=list, init=False
+    )
 
 
 @table_registry.mapped_as_dataclass
@@ -35,4 +37,4 @@ class Transactions:
     type: Mapped[TransactionType] = mapped_column(Enum(TransactionType), nullable=False)
     transaction_date: Mapped[date] = mapped_column(Date, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, init=False, server_default=func.now())
-    user: Mapped[User] = relationship(back_populates='transactions', init=False)
+    user: Mapped[User] = relationship(back_populates='transactions', lazy='selectin', init=False)

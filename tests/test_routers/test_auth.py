@@ -6,7 +6,7 @@ from freezegun import freeze_time
 
 
 def test_login(client, user):
-    form_data = {'username': user.email, 'password': '123456'}
+    form_data = {'username': user.email, 'password': user.clean_password}
 
     response = client.post('/auth/login', data=form_data)
 

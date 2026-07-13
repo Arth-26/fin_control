@@ -1,3 +1,5 @@
+import os
+
 from datetime import datetime, timedelta
 from http import HTTPStatus
 from zoneinfo import ZoneInfo
@@ -15,7 +17,7 @@ from fin_control.settings import Settings
 
 SECRET_KEY = Settings().SECRET_KEY
 ALGORITHM = Settings().ALGORITHM
-ACCESS_TOKEN_EXPIRE_MINUTES = Settings().ACCESS_TOKEN_EXPIRE_MINUTES
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 pwd_context = PasswordHash.recommended()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='auth/login')
